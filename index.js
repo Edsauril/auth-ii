@@ -1,11 +1,16 @@
+require("dotenv").config();
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const knex = require("knex");
 const knexConfig = require("./knexfile.js");
+const cors = require("cors");
+
 const server = express();
 const db = knex(knexConfig.development);
+
 server.use(express.json());
+server.use(cors());
 
 function generateToken(user) {
   const payload = {
@@ -22,23 +27,35 @@ function generateToken(user) {
   return jwt.sign(payload, secret, options);
 }
 
+function protected(req, res, next) {
+  const token = req.headers.authorization;
+  if (token) {
+    jwt.verify(token, "secret", (err, decodedToken) => {
+      if (err) {
+        res.status(401).json({ message: "invalid token" });
+      } else {
+        req.decodedToken = decodedToken;
+        next();
+      }
+    });
+  } else {
+    res.status(401).json({ message: "didnt get token" });
+  }
+}
+
 //=======================================================================================Server Check <===
 server.get("/", (req, res) => {
   res.send("Server Works");
 });
 
 //=======================================================================================Get Users <===
-server.get("/users", (req, res) => {
-  if (req.session && req.session.userId) {
-    db("users")
-      .select("id", "username")
-      .then(users => {
-        res.json(users);
-      })
-      .catch(err => res.send(err));
-  } else {
-    res.status(401).json({ message: "login failed" });
-  }
+server.get("/users", protected, (req, res) => {
+  db("users")
+    .select("id", "username", "password") // ***************************** added password to the select
+    .then(users => {
+      res.json(users);
+    })
+    .catch(err => res.send(err));
 });
 //=======================================================================================Register <===
 server.post("/register", (req, res) => {
