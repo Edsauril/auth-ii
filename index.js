@@ -51,7 +51,7 @@ server.get("/", (req, res) => {
 //=======================================================================================Get Users <===
 server.get("/users", protected, (req, res) => {
   db("users")
-    .select("id", "username", "password") // ***************************** added password to the select
+    .select("id", "username", "password", "department") // ***************************** added password to the select
     .then(users => {
       res.json(users);
     })
